@@ -29,6 +29,11 @@ class SliceTests(unittest.TestCase):
         self.assertEqual(self.store.get_slice('lowercase', 'z', 'a'), [])
         self.assertEqual(self.store.get_slice('uppercase', 'Q', 'B'), [])
 
+    # XXX This behavior was unspecified, but I've written these tests (and the
+    # get_slice implementation) with what I thought made sense, by way of
+    # analogy with Python's list slices.  Other interpretations would certainly
+    # be valid, of course.
+
     def test_nonexistent_endpoints(self):
         self.assertEqual(self.store.get_slice('lowercase', 'A', 'Z'), [])
         self.assertEqual(self.store.get_slice('uppercase', 'f', 'u'), [])
