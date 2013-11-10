@@ -70,29 +70,51 @@ class KeyColumnValueStore(object):
         self.kcv = defaultdict(lambda: sorteddict())
 
     def set(self, key, col, val):
-        """Sets the value at the given key/column."""
+        """Sets the value at the given key/column.
+
+        In the average case, requires O(log(c)**2) operations, where c is the
+        number of columns associated with the key."""
         assert all(isinstance(datum, str) for datum in (key, col, val))
         self.kcv[key][col] = val
 
     def get(self, key, col):
-        """Return the value at the specified key/column."""
+        """Return the value at the specified key/column, or None if no such
+        value exists.
+
+        In the average case, requires O(1) operations."""
         cv = self.kcv.get(key)
         return None if cv is None else cv.get(col)
 
     def get_key(self, key):
-        """Returns a sorted list of column/value tuples."""
+        """Returns a sorted list of column/value tuples.
+
+        Requires O(c) operations, where c is the number of columns associated
+        with the key."""
         return list(self.kcv[key].items())
 
     def get_keys(self):
-        """Returns a set containing all of the keys in the store."""
+        """Returns a set containing all of the keys in the store.
+
+        Requires O(k) operations, where k is the number of keys stored."""
+        # It'd be easy to make this O(1) by having an extra slot, self.keys =
+        # set(), that we add to & remove from in methods like self.set and
+        # self.delete_key.  However, just returning self.keys would present a
+        # mutable structure to the outside, which is asking for trouble, and
+        # copying the value would be O(k) anyway (I think).  So, this
+        # implementation does just as well.
         return set(self.kcv.keys())
 
     def delete(self, key, col):
-        """Removes a column/value from the given key."""
+        """Removes a column/value from the given key.
+
+        In the average case, requires O(log(c)) operations, where c is the
+        number of columns associated with the key."""
         if key in self.kcv and col in self.kcv[key]:
             del self.kcv[key][col]
 
     def delete_key(self, key):
-        """Removes all data associated with the given key."""
+        """Removes all data associated with the given key.
+
+        In the average case, requires O(1) operations."""
         if key in self.kcv:
             del self.kcv[key]
