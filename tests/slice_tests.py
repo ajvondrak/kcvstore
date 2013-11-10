@@ -1,3 +1,4 @@
+import os
 import string
 import unittest
 from kcvstore import KeyColumnValueStore
@@ -10,6 +11,9 @@ class SliceTests(unittest.TestCase):
             self.store.set('lowercase', col, 'val')
         for col in string.ascii_uppercase:
             self.store.set('uppercase', col, 'val')
+
+    def tearDown(self):
+        os.remove(self.store.path)
 
     def test_open_slice(self):
         self.assertEqual(self.store.get_slice('lowercase', None, None),

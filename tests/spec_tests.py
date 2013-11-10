@@ -2,6 +2,7 @@
 Test the examples given in the project specification.
 """
 
+import os
 import unittest
 from kcvstore import KeyColumnValueStore
 
@@ -15,6 +16,9 @@ class LevelOneSpecTests(unittest.TestCase):
         self.store.set('c', 'cd', 'x')
         self.store.set('d', 'de', 'x')
         self.store.set('d', 'df', 'x')
+
+    def tearDown(self):
+        os.remove(self.store.path)
 
     def test_get(self):
         self.assertEqual(self.store.get('a', 'aa'), 'x')
@@ -56,6 +60,9 @@ class LevelTwoSpecTests(unittest.TestCase):
         self.store.set('a', 'ae', 'x')
         self.store.set('a', 'af', 'x')
         self.store.set('a', 'ag', 'x')
+
+    def tearDown(self):
+        os.remove(self.store.path)
 
     def test_get_slice(self):
         self.assertEqual(self.store.get_slice('a', 'ac', 'ae'),

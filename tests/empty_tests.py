@@ -1,3 +1,4 @@
+import os
 import unittest
 from kcvstore import KeyColumnValueStore
 
@@ -5,6 +6,9 @@ from kcvstore import KeyColumnValueStore
 class EmptyStoreTests(unittest.TestCase):
     def setUp(self):
         self.empty_store = KeyColumnValueStore()
+
+    def tearDown(self):
+        os.remove(self.empty_store.path)
 
     def test_get(self):
         self.assertEqual(self.empty_store.get('any key', 'any col'), None)

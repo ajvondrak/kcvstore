@@ -1,5 +1,8 @@
+import os.path
+import pickle
 from blist import sorteddict
 from collections import defaultdict
+from tempfile import NamedTemporaryFile
 
 
 # I've made the executive decision that the 3rd party blist module is within
@@ -48,6 +51,11 @@ from collections import defaultdict
 #
 # This shortness is, of course, thoroughly negated by my long-winded comment.
 
+def _sorteddict():
+    """An alternative to `lambda : sorteddict()` to make pickle work."""
+    return sorteddict()
+
+
 class KeyColumnValueStore(object):
     """A key/column/value store.
 
@@ -66,8 +74,34 @@ class KeyColumnValueStore(object):
     more frequent than writes.
     """
 
-    def __init__(self):
-        self.kcv = defaultdict(lambda: sorteddict())
+    def __init__(self, path=None):
+        self.path = self._logname(path or '')
+        if path is None:
+            self.kcv = defaultdict(_sorteddict)
+            self._persist()
+        else:
+            self._load()
+
+    # XXX Loads of issues with this naive persistence strategy.  I won't be
+    # fixing them.
+
+    def _logname(self, path):
+        path = os.path.expanduser(path)
+        path = os.path.expandvars(path)
+        if os.path.isfile(path):
+            return path
+        with NamedTemporaryFile(delete=False) as log:
+            return log.name
+
+    def _load(self):
+        """Reads the existing key/column/value structure from disk."""
+        with open(self.path, 'r') as log:
+            self.kcv = pickle.load(log)
+
+    def _persist(self):
+        """Persists the current key/column/value structure to disk."""
+        with open(self.path, 'w') as log:
+            pickle.dump(self.kcv, log)
 
     def set(self, key, col, val):
         """Sets the value at the given key/column.
@@ -76,6 +110,7 @@ class KeyColumnValueStore(object):
         number of columns associated with the key."""
         assert all(isinstance(datum, str) for datum in (key, col, val))
         self.kcv[key][col] = val
+        self._persist()
 
     def get(self, key, col):
         """Return the value at the specified key/column, or None if no such
@@ -111,6 +146,7 @@ class KeyColumnValueStore(object):
         number of columns associated with the key."""
         if key in self.kcv and col in self.kcv[key]:
             del self.kcv[key][col]
+            self._persist()
 
     def delete_key(self, key):
         """Removes all data associated with the given key.
@@ -118,6 +154,7 @@ class KeyColumnValueStore(object):
         In the average case, requires O(1) operations."""
         if key in self.kcv:
             del self.kcv[key]
+            self._persist()
 
     def get_slice(self, key, start, stop):
         """Returns a sorted list of column/value tuples where the column values
