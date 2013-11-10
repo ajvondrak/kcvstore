@@ -44,3 +44,27 @@ class LevelOneSpecTests(unittest.TestCase):
     def test_delete_key(self):
         self.store.delete_key('c')
         self.assertEqual(self.store.get_key('c'), [])
+
+
+class LevelTwoSpecTests(unittest.TestCase):
+    def setUp(self):
+        self.store = KeyColumnValueStore()
+        self.store.set('a', 'aa', 'x')
+        self.store.set('a', 'ab', 'x')
+        self.store.set('a', 'ac', 'x')
+        self.store.set('a', 'ad', 'x')
+        self.store.set('a', 'ae', 'x')
+        self.store.set('a', 'af', 'x')
+        self.store.set('a', 'ag', 'x')
+
+    def test_get_slice(self):
+        self.assertEqual(self.store.get_slice('a', 'ac', 'ae'),
+                         [('ac', 'x'), ('ad', 'x'), ('ae', 'x')])
+
+    def test_get_slice_open_right(self):
+        self.assertEqual(self.store.get_slice('a', 'ae', None),
+                         [('ae', 'x'), ('af', 'x'), ('ag', 'x')])
+
+    def test_get_slice_open_left(self):
+        self.assertEqual(self.store.get_slice('a', None, 'ac'),
+                         [('aa', 'x'), ('ab', 'x'), ('ac', 'x')])

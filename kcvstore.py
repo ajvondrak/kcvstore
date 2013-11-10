@@ -102,7 +102,7 @@ class KeyColumnValueStore(object):
         # mutable structure to the outside, which is asking for trouble, and
         # copying the value would be O(k) anyway (I think).  So, this
         # implementation does just as well.
-        return set(self.kcv.keys())
+        return set(self.kcv.iterkeys())
 
     def delete(self, key, col):
         """Removes a column/value from the given key.
@@ -118,3 +118,25 @@ class KeyColumnValueStore(object):
         In the average case, requires O(1) operations."""
         if key in self.kcv:
             del self.kcv[key]
+
+    def get_slice(self, key, start, stop):
+        """Returns a sorted list of column/value tuples where the column values
+        are between the start and stop values, inclusive of the start and stop
+        values.  Start and/or stop can be None values, leaving the slice open
+        ended in that direction.
+
+        In the average case, requires O(log(c)**2 + s) operations, where c is
+        the number of columns associated with the key and s is the length of
+        the slice.  Thus, for large slices, this approaches O(c)."""
+        if key not in self.kcv:
+            return []
+        # sorteddict.keys()  - O(1), returns sortedset in Python 2
+        # len(sortedset)     - O(1)
+        # sortedset.bisect_* - O(log(c)**2)
+        # sortedset[i:j]     - O(log(c))
+        # self.get           - O(1)
+        # list comprehension - O(s), since O(1) self.get for each slice element
+        cols = self.kcv[key].keys()
+        start_index = 0 if start is None else cols.bisect_left(start)
+        stop_index = len(cols) if stop is None else cols.bisect_right(stop)
+        return [(c, self.get(key, c)) for c in cols[start_index:stop_index]]
