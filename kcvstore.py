@@ -1,15 +1,17 @@
+from collections import defaultdict
+
 blist_is_in_the_spirit_of_the_challenge = True
 
 if blist_is_in_the_spirit_of_the_challenge:
     try:
         from blist import sorteddict
-        use_blist = True
+        use_bisect = False
     except ImportError:
         import bisect
-        use_blist = False
+        use_bisect = True
 else:
     import bisect
-    use_blist = False
+    use_bisect = True
 
 
 class KeyColumnValueStore(object):
@@ -30,83 +32,59 @@ class KeyColumnValueStore(object):
     more frequent than writes.
     """
 
-    if use_blist:
+    def __init__(self):
+        self.ordered_columns = {}  # key -> list(col)
+        if use_bisect:
+            self.kcv = defaultdict(lambda: {})  # key -> (col -> val)
+        else:
+            self.kcv = defaultdict(lambda: sorteddict())
 
-        def __init__(self):
-            self.kcv = {}
+    def _track_column_order(self, key, col):
+        """Adds `col` to the ordered list of columns associated with `key`."""
+        if use_bisect:
+            if col not in self.kcv[key]:
+                self.ordered_columns.setdefault(key, [])
+                bisect.insort(self.ordered_columns[key], col)
 
-        def set(self, key, col, val):
-            """Sets the value at the given key/column."""
-            assert all(isinstance(datum, str) for datum in (key, col, val))
-            self.kcv.setdefault(key, sorteddict())[col] = val
+    def set(self, key, col, val):
+        """Sets the value at the given key/column."""
+        assert all(isinstance(datum, str) for datum in (key, col, val))
+        self._track_column_order(key, col)
+        self.kcv[key][col] = val
 
-        def get(self, key, col):
-            """Return the value at the specified key/column."""
-            cv = self.kcv.get(key)
-            return None if cv is None else cv.get(col)
+    def get(self, key, col):
+        """Return the value at the specified key/column."""
+        cv = self.kcv.get(key)
+        return None if cv is None else cv.get(col)
 
-        def get_key(self, key):
-            """Returns a sorted list of column/value tuples."""
-            cv = self.kcv.get(key)
-            return [] if cv is None else list(cv.items())
+    def get_key(self, key):
+        """Returns a sorted list of column/value tuples."""
+        if use_bisect:
+            cols = self.ordered_columns.get(key, [])
+        else:
+            cols = self.kcv[key]
+        return [(c, self.get(key, c)) for c in cols]
 
-        def get_keys(self):
-            """Returns a set containing all of the keys in the store."""
-            return set(self.kcv.keys())
+    def get_keys(self):
+        """Returns a set containing all of the keys in the store."""
+        return set(self.kcv.keys())
 
-        def delete(self, key, col):
-            """Removes a column/value from the given key."""
-            if key in self.kcv:
-                if col in self.kcv[key]:
-                    del self.kcv[key][col]
+    def _forget_column_order(self, key, col):
+        """Removes `col` from the ordered list of columns of `key`."""
+        if use_bisect:
+            cols = self.ordered_columns[key]
+            cols.pop(bisect.bisect_left(cols, col))
 
-        def delete_key(self, key):
-            """Removes all data associated with the given key."""
-            if key in self.kcv:
-                del self.kcv[key]
+    def delete(self, key, col):
+        """Removes a column/value from the given key."""
+        if key in self.kcv:
+            if col in self.kcv[key]:
+                del self.kcv[key][col]
+                self._forget_column_order(key, col)
 
-    else:
-
-        def __init__(self):
-            self.columns = {}  # key -> set(col)
-            self.ordered = {}  # key -> list(col)
-            self.value = {}    # (key, col) -> val
-
-        def set(self, key, col, val):
-            """Sets the value at the given key/column."""
-            assert all(isinstance(datum, str) for datum in (key, col, val))
-            self.columns.setdefault(key, set())
-            self.ordered.setdefault(key, [])
-            if col not in self.columns[key]:
-                self.columns[key].add(col)
-                bisect.insort(self.ordered[key], col)
-            self.value[(key, col)] = val
-
-        def get(self, key, col):
-            """Return the value at the specified key/column."""
-            return self.value.get((key, col))
-
-        def get_key(self, key):
-            """Returns a sorted list of column/value tuples."""
-            return [(c, self.get(key, c)) for c in self.ordered.get(key, [])]
-
-        def get_keys(self):
-            """Returns a set containing all of the keys in the store."""
-            return set(self.columns.iterkeys())
-
-        def delete(self, key, col):
-            """Removes a column/value from the given key."""
-            if (key, col) in self.value:
-                del self.value[(key, col)]
-                self.columns[key].remove(col)
-                sorted_cols = self.ordered[key]
-                sorted_cols.pop(bisect.bisect_left(sorted_cols, col))
-
-        def delete_key(self, key):
-            """Removes all data associated with the given key."""
-            if key in self.columns:
-                cols = self.columns[key]
-                del self.columns[key]
-                del self.ordered[key]
-                for col in cols:
-                    del self.value[(key, col)]
+    def delete_key(self, key):
+        """Removes all data associated with the given key."""
+        if key in self.kcv:
+            del self.kcv[key]
+            if use_bisect:
+                del self.ordered_columns[key]
