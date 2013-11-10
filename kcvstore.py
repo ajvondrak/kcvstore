@@ -1,7 +1,6 @@
 import os.path
 import pickle
 from blist import sorteddict
-from collections import defaultdict
 from tempfile import NamedTemporaryFile
 
 
@@ -51,10 +50,6 @@ from tempfile import NamedTemporaryFile
 #
 # This shortness is, of course, thoroughly negated by my long-winded comment.
 
-def _sorteddict():
-    """An alternative to `lambda : sorteddict()` to make pickle work."""
-    return sorteddict()
-
 
 class KeyColumnValueStore(object):
     """A key/column/value store.
@@ -77,7 +72,7 @@ class KeyColumnValueStore(object):
     def __init__(self, path=None):
         self.path = self._logname(path or '')
         if path is None:
-            self.kcv = defaultdict(_sorteddict)
+            self.kcv = {}
             self._persist()
         else:
             self._load()
@@ -109,7 +104,7 @@ class KeyColumnValueStore(object):
         In the average case, requires O(log(c)**2) operations, where c is the
         number of columns associated with the key."""
         assert all(isinstance(datum, str) for datum in (key, col, val))
-        self.kcv[key][col] = val
+        self.kcv.setdefault(key, sorteddict())[col] = val
         self._persist()
 
     def get(self, key, col):
@@ -125,7 +120,7 @@ class KeyColumnValueStore(object):
 
         Requires O(c) operations, where c is the number of columns associated
         with the key."""
-        return list(self.kcv[key].items())
+        return list(self.kcv.get(key, sorteddict()).items())
 
     def get_keys(self):
         """Returns a set containing all of the keys in the store.
@@ -172,7 +167,7 @@ class KeyColumnValueStore(object):
         # sortedset[i:j]     - O(log(c))
         # self.get           - O(1)
         # list comprehension - O(s), since O(1) self.get for each slice item
-        cols = self.kcv[key].keys()
+        cols = self.kcv.get(key, sorteddict()).keys()
         start_missing = start not in cols
         stop_missing = stop not in cols
         if start_missing and stop_missing and not (start is stop is None):

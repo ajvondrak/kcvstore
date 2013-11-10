@@ -87,3 +87,19 @@ class GetterTests(unittest.TestCase):
     def test_get_slice_get_slice(self):
         self.assertEqual(self.store.get_slice('key', 'col', None), [])
         self.assertEqual(self.store.get_slice('key', 'col', None), [])
+
+
+class DeleteMissingKeyTests(unittest.TestCase):
+    def setUp(self):
+        self.store = KeyColumnValueStore()
+
+    def tearDown(self):
+        os.remove(self.store.path)
+
+    def test_delete_get_keys(self):
+        self.store.delete('key', 'col')
+        self.assertEqual(self.store.get_keys(), set())
+
+    def test_delete_key_get_keys(self):
+        self.store.delete_key('key')
+        self.assertEqual(self.store.get_keys(), set())
