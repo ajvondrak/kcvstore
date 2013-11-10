@@ -128,15 +128,13 @@ class KeyColumnValueStore(object):
         In the average case, requires O(log(c)**2 + s) operations, where c is
         the number of columns associated with the key and s is the length of
         the slice.  Thus, for large slices, this approaches O(c)."""
-        if key not in self.kcv:
-            return []
-        # sorteddict.keys()    - O(1), returns sortedset in Python 2
-        # len(sortedset)       - O(1)
-        # x [not] in sortedset - O(log(c)**2)
-        # sortedset.bisect_*   - O(log(c)**2)
-        # sortedset[i:j]       - O(log(c))
-        # self.get             - O(1)
-        # list comprehension   - O(s), since O(1) self.get for each slice item
+        # sorteddict.keys()  - O(1), returns sortedset in Python 2
+        # x not in sortedset - O(log(c)**2)
+        # len(sortedset)     - O(1)
+        # sortedset.bisect_* - O(log(c)**2)
+        # sortedset[i:j]     - O(log(c))
+        # self.get           - O(1)
+        # list comprehension - O(s), since O(1) self.get for each slice item
         cols = self.kcv[key].keys()
         start_missing = start not in cols
         stop_missing = stop not in cols
