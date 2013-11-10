@@ -10,6 +10,12 @@ class PersistenceTests(unittest.TestCase):
     def tearDown(self):
         os.remove(self.store.path)
 
+    def test_init_persists(self):
+        new_store = KeyColumnValueStore(path=self.store.path)
+        self.assertEqual(new_store.get('any key', 'any col'), None)
+        self.assertEqual(new_store.get_key('any key'), [])
+        self.assertEqual(new_store.get_keys(), set())
+
     def test_set_persists(self):
         self.store.set('key', 'col', 'val')
         new_store = KeyColumnValueStore(path=self.store.path)
