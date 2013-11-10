@@ -1,18 +1,52 @@
+from blist import sorteddict
 from collections import defaultdict
 
-blist_is_in_the_spirit_of_the_challenge = True
 
-if blist_is_in_the_spirit_of_the_challenge:
-    try:
-        from blist import sorteddict
-        use_bisect = False
-    except ImportError:
-        import bisect
-        use_bisect = True
-else:
-    import bisect
-    use_bisect = True
-
+# I've made the executive decision that the 3rd party blist module is within
+# the spirit of this coding challenge.  To understand why, I'll compare the
+# following code to commit a81ea9, which included a small bit of extra code to
+# handle "a world without blist".  We'll see that it's largely the same as what
+# I have now.  (Except that blist is a tad more efficient.)
+#
+# The basic design I had for the KeyColumnValueStore noticed that the only
+# particular requirement separating it from a plain nested hash table was the
+# get_key method, which returns a list of columns in sorted order.  To this
+# end, I only needed to track two things:
+#
+# * a nested hash table (Python dictionaries) for all the data, obviously
+#
+# * the order of columns associated with each key, using a hash table from keys
+#   to a sorted sequence of columns (every time you insert a new column, you'd
+#   have to "insort" into this sequence)
+#
+# The question is: what data structure do we use for the sorted sequence?  I
+# didn't want the overhead of writing my own ordered tree, so the naive way to
+# do this is with a regular Python list.  We can insort into a list using the
+# bisect module, which is all well and good: there are only O(log n)
+# comparisons to find where to insert into a list of size n.  But the actual
+# *insertion* would still be O(n).  Python lists are dynamic arrays underneath,
+# so insertion into the middle means we have to shift the indices of all the
+# elements to the right of the insertion point.
+#
+# On the other hand, the instructions clearly said data structure libraries
+# were OK.  Enter blist, with its sortedset class.  It handles the ordered tree
+# structure for me, with the properly logarithmic insertion methods and so on.
+# The code is just as simple as if I'd used regular Python lists with the
+# bisect module (it's just more efficient with blist).  So, I think using blist
+# is in the spirit of the problem here.
+#
+# However, this "dictionary + sorted set of keys" bookkeeping turns out to be a
+# problem so easy to solve (if you already have a sorted set) that the blist
+# module already *has* a sorteddict class.  Since I'm using blist anyway, why
+# not make the tiny conceptual leap to just represent the KeyColumnValueStore
+# as a dict from keys to sorteddicts?  While it makes the code fairly trivial
+# to implement, it's not really any more "trivial" than the blist-based code
+# from before would've been.  In my mind, the "dict + sorted set" approach
+# would be OK (as I said above).  Though the sorteddict class just "solves the
+# problem for me" (in one view), it's not without thought: it's basically a
+# shorter way to do what I already would've done.
+#
+# This shortness is, of course, thoroughly negated by my long-winded comment.
 
 class KeyColumnValueStore(object):
     """A key/column/value store.
@@ -33,23 +67,11 @@ class KeyColumnValueStore(object):
     """
 
     def __init__(self):
-        self.ordered_columns = {}  # key -> list(col)
-        if use_bisect:
-            self.kcv = defaultdict(lambda: {})  # key -> (col -> val)
-        else:
-            self.kcv = defaultdict(lambda: sorteddict())
-
-    def _track_column_order(self, key, col):
-        """Adds `col` to the ordered list of columns associated with `key`."""
-        if use_bisect:
-            if col not in self.kcv[key]:
-                self.ordered_columns.setdefault(key, [])
-                bisect.insort(self.ordered_columns[key], col)
+        self.kcv = defaultdict(lambda: sorteddict())
 
     def set(self, key, col, val):
         """Sets the value at the given key/column."""
         assert all(isinstance(datum, str) for datum in (key, col, val))
-        self._track_column_order(key, col)
         self.kcv[key][col] = val
 
     def get(self, key, col):
@@ -59,32 +81,18 @@ class KeyColumnValueStore(object):
 
     def get_key(self, key):
         """Returns a sorted list of column/value tuples."""
-        if use_bisect:
-            cols = self.ordered_columns.get(key, [])
-        else:
-            cols = self.kcv[key]
-        return [(c, self.get(key, c)) for c in cols]
+        return list(self.kcv[key].items())
 
     def get_keys(self):
         """Returns a set containing all of the keys in the store."""
         return set(self.kcv.keys())
 
-    def _forget_column_order(self, key, col):
-        """Removes `col` from the ordered list of columns of `key`."""
-        if use_bisect:
-            cols = self.ordered_columns[key]
-            cols.pop(bisect.bisect_left(cols, col))
-
     def delete(self, key, col):
         """Removes a column/value from the given key."""
-        if key in self.kcv:
-            if col in self.kcv[key]:
-                del self.kcv[key][col]
-                self._forget_column_order(key, col)
+        if key in self.kcv and col in self.kcv[key]:
+            del self.kcv[key][col]
 
     def delete_key(self, key):
         """Removes all data associated with the given key."""
         if key in self.kcv:
             del self.kcv[key]
-            if use_bisect:
-                del self.ordered_columns[key]
