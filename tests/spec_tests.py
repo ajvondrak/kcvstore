@@ -5,6 +5,7 @@ Test the examples given in the project specification.
 import unittest
 from kcvstore import KeyColumnValueStore
 
+
 class LevelOneSpecTests(unittest.TestCase):
     def setUp(self):
         self.store = KeyColumnValueStore()

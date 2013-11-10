@@ -68,9 +68,9 @@ class KeyColumnValueStore(object):
     else:
 
         def __init__(self):
-            self.columns = {} # key -> set(col)
-            self.ordered = {} # key -> list(col)
-            self.value = {} # (key, col) -> val
+            self.columns = {}  # key -> set(col)
+            self.ordered = {}  # key -> list(col)
+            self.value = {}    # (key, col) -> val
 
         def set(self, key, col, val):
             """Sets the value at the given key/column."""
