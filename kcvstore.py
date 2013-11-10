@@ -68,46 +68,45 @@ class KeyColumnValueStore(object):
     else:
 
         def __init__(self):
-            self.key_to_cols = {}
-            self.key_to_sorted_cols = {}
-            self.keycol_to_val = {}
+            self.columns = {} # key -> set(col)
+            self.ordered = {} # key -> list(col)
+            self.value = {} # (key, col) -> val
 
         def set(self, key, col, val):
             """Sets the value at the given key/column."""
             assert all(isinstance(datum, str) for datum in (key, col, val))
-            self.key_to_cols.setdefault(key, set())
-            self.key_to_sorted_cols.setdefault(key, [])
-            if col not in self.key_to_cols[key]:
-                self.key_to_cols[key].add(col)
-                bisect.insort(self.key_to_sorted_cols[key], col)
-            self.keycol_to_val[(key, col)] = val
+            self.columns.setdefault(key, set())
+            self.ordered.setdefault(key, [])
+            if col not in self.columns[key]:
+                self.columns[key].add(col)
+                bisect.insort(self.ordered[key], col)
+            self.value[(key, col)] = val
 
         def get(self, key, col):
             """Return the value at the specified key/column."""
-            return self.keycol_to_val.get((key, col))
+            return self.value.get((key, col))
 
         def get_key(self, key):
             """Returns a sorted list of column/value tuples."""
-            sorted_cols = self.key_to_sorted_cols.get(key, [])
-            return [(c, self.get(key, c)) for c in sorted_cols]
+            return [(c, self.get(key, c)) for c in self.ordered.get(key, [])]
 
         def get_keys(self):
             """Returns a set containing all of the keys in the store."""
-            return set(self.key_to_cols)
+            return set(self.columns.iterkeys())
 
         def delete(self, key, col):
             """Removes a column/value from the given key."""
-            if (key, col) in self.keycol_to_val:
-                del self.keycol_to_val[(key, col)]
-                self.key_to_cols[key].remove(col)
-                sorted_cols = self.key_to_sorted_cols[key]
+            if (key, col) in self.value:
+                del self.value[(key, col)]
+                self.columns[key].remove(col)
+                sorted_cols = self.ordered[key]
                 sorted_cols.pop(bisect.bisect_left(sorted_cols, col))
 
         def delete_key(self, key):
             """Removes all data associated with the given key."""
-            if key in self.key_to_cols:
-                cols = self.key_to_cols[key]
-                del self.key_to_cols[key]
-                del self.key_to_sorted_cols[key]
+            if key in self.columns:
+                cols = self.columns[key]
+                del self.columns[key]
+                del self.ordered[key]
                 for col in cols:
-                    del self.keycol_to_val[(key, col)]
+                    del self.value[(key, col)]
