@@ -102,7 +102,7 @@ class KeyColumnValueStore(object):
 
         In the average case, requires O(log(c)**2) operations, where c is the
         number of columns associated with the key."""
-        assert all(isinstance(datum, str) for datum in (key, col, val))
+        assert all(isinstance(datum, basestring) for datum in (key, col, val))
         self.kcv.setdefault(key, sorteddict())[col] = val
         self._persist()
 
