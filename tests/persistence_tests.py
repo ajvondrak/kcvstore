@@ -1,9 +1,10 @@
 import os
 import unittest
 from kcvstore import KeyColumnValueStore
+from tempfile import NamedTemporaryFile
 
 
-class PersistenceTests(unittest.TestCase):
+class PersistenceTestsWithoutArgument(unittest.TestCase):
     def setUp(self):
         self.store = KeyColumnValueStore()
 
@@ -40,3 +41,10 @@ class PersistenceTests(unittest.TestCase):
         self.store.delete_key('keyB')
         new_store = KeyColumnValueStore(path=self.store.path)
         self.assertEqual(new_store.get_keys(), {'keyA'})
+
+
+class PersistenceTestsWithArgument(PersistenceTestsWithoutArgument):
+    def setUp(self):
+        with NamedTemporaryFile(delete=False) as tmp:
+            path = tmp.name
+        self.store = KeyColumnValueStore(path=path)

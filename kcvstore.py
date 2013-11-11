@@ -1,4 +1,4 @@
-import os.path
+import os
 import pickle
 from blist import sorteddict
 from tempfile import NamedTemporaryFile
@@ -70,23 +70,22 @@ class KeyColumnValueStore(object):
     """
 
     def __init__(self, path=None):
-        self.path = self._logname(path or '')
-        if path is None:
-            self.kcv = {}
-            self._persist()
-        else:
-            self._load()
+        self.kcv = {}
+        self._create_log_file(path)
 
     # XXX Loads of issues with this naive persistence strategy.  I won't be
     # fixing them.
 
-    def _logname(self, path):
-        path = os.path.expanduser(path)
-        path = os.path.expandvars(path)
-        if os.path.isfile(path):
-            return path
-        with NamedTemporaryFile(delete=False) as log:
-            return log.name
+    def _create_log_file(self, path):
+        if path is None:
+            with NamedTemporaryFile(delete=False) as tmp:
+                self.path = tmp.name
+        else:
+            self.path = os.path.expandvars(os.path.expanduser(path))
+        if os.path.isfile(self.path) and os.stat(self.path).st_size:
+            self._load()
+        else:
+            self._persist()  # will create the file if it doesn't exist
 
     def _load(self):
         """Reads the existing key/column/value structure from disk."""
